@@ -1,9 +1,9 @@
-const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
-const chatId = '1246584382';
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 const fs = require('fs');
 
+const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
+const chatId = '1246584382';
 const url = 'https://geotrans.ro/cargo/search?from=2575&to=136';
 const lastCargoCountFile = 'lastCargoCount.json';
 
@@ -34,14 +34,7 @@ const extractCargoDetails = async (el) => {
     const weightVolume = infoList[1] || 'No weight/volume data';
     const company = await el.$eval('.td-company', (company) => company.textContent.trim());
 
-    return {
-      loadingCity,
-      unloadingCity,
-      date,
-      cargoType,
-      weightVolume,
-      company
-    };
+    return { loadingCity, unloadingCity, date, cargoType, weightVolume, company };
   } catch (error) {
     console.error('Error extracting cargo details:', error);
     return null;
@@ -49,7 +42,10 @@ const extractCargoDetails = async (el) => {
 };
 
 const checkCargo = async () => {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'] // Added these arguments to fix sandboxing issues
+  });
   const page = await browser.newPage();
 
   try {
@@ -109,8 +105,5 @@ Companie: ${cargoDetails.company}
   }
 };
 
-// Run the checkCargo function every 5 minutes
-setInterval(checkCargo, 5 * 60 * 1000); // 5 minutes = 5 * 60 * 1000 ms
-
-// Optionally, run it once immediately when starting
-checkCargo();
+// Run checkCargo every 5 minutes (300,000 milliseconds)
+setInterval(checkCargo, 30000);
