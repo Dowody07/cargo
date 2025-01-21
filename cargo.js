@@ -82,15 +82,7 @@ const checkCargoForUrl = async ({ url, lastCargoCountFile, startMessage }) => {
     if (cargoCount && cargoCount === lastCargoCount) {
       // Log to the console that the cargo count remains the same
       console.log(`No new cargos for ${url}. The cargo count remains the same: ${cargoCount}`);
-
-      // Send a message saying the cargo count is the same
-      const message = `
-<b>🔔 Nu sunt noi oferte!</b>
-<b>Numărul de oferte rămâne același:</b> ${cargoCount}
-
-<a href="${url}">🔗 Vezi detalii aici</a>
-      `.trim();
-      await sendMessage(message);
+      // No message will be sent to Telegram in this case.
     } else if (cargoCount) {
       const cargos = await page.$$('tr.table-line');
       let cargoDetailsMessage = `
