@@ -68,7 +68,7 @@ const checkCargoForUrl = async ({ url, lastCargoCountFile }) => {
     const cargoCount = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
     const lastCargoCount = getLastCargoCount(lastCargoCountFile);
 
-    if (cargoCount && cargoCount != lastCargoCount) {
+    if (cargoCount && cargoCount == lastCargoCount) {
       const cargos = await page.$$('tr.table-line');
       let cargoDetailsMessage = '';
       const cargoDetailsList = [];
