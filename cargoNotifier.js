@@ -53,6 +53,12 @@ const sendMessage = async (text) => {
   }
 };
 
+// Function to extract numeric value from "OFERTE GĂSITE: <number>" string
+const extractCargoCount = (cargoCountString) => {
+  const match = cargoCountString.match(/\d+/);  // This regex extracts the number part
+  return match ? parseInt(match[0], 10) : 0;
+};
+
 const checkCargoForUrl = async ({ url, lastCargoCountFile }) => {
   const browser = await puppeteer.launch({
     headless: true,
@@ -65,10 +71,13 @@ const checkCargoForUrl = async ({ url, lastCargoCountFile }) => {
     await page.waitForSelector('h4.label-items-found', { timeout: 10000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    const cargoCount = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCountString = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCount = extractCargoCount(cargoCountString);
     const lastCargoCount = getLastCargoCount(lastCargoCountFile);
 
-    if (cargoCount && cargoCount == lastCargoCount) {
+    if (cargoCount !== lastCargoCount) {
+      console.log(`No new cargos for ${url}. The cargo count remains the same: ${cargoCount}`);
+    } else if (cargoCount) {
       const cargos = await page.$$('tr.table-line');
       let cargoDetailsMessage = '';
       const cargoDetailsList = [];

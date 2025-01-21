@@ -6,16 +6,8 @@ const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
 const chatId = '7920332150';
 
 const urls = [
-  { 
-    url: 'https://geotrans.ro/cargo/search?from=2575&to=136', 
-    lastCargoCountFile: 'lastCargoCount_2575_136.json',
-    startMessage: 'Moldova → Romania'
-  },
-  { 
-    url: 'https://geotrans.ro/cargo/search?from=136&to=2575', 
-    lastCargoCountFile: 'lastCargoCount_136_2575.json',
-    startMessage: 'Romania → Moldova'
-  },
+  { url: 'https://geotrans.ro/cargo/search?from=2575&to=136', lastCargoCountFile: 'lastCargoCount_2575_136.json' },
+  { url: 'https://geotrans.ro/cargo/search?from=136&to=2575', lastCargoCountFile: 'lastCargoCount_136_2575.json' },
 ];
 
 const getLastCargoCount = (file) => {
@@ -34,7 +26,6 @@ const saveCargoCount = (file, cargoCount) => {
   fs.writeFileSync(file, JSON.stringify({ cargoCount }));
 };
 
-// Function to extract cargo details
 const extractCargoDetails = async (el) => {
   try {
     const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
@@ -49,7 +40,6 @@ const extractCargoDetails = async (el) => {
   }
 };
 
-// Function to send a message to Telegram
 const sendMessage = async (text) => {
   try {
     console.log('Sending new message...');
@@ -63,8 +53,13 @@ const sendMessage = async (text) => {
   }
 };
 
-// Function to check cargo details for each URL
-const checkCargoForUrl = async ({ url, lastCargoCountFile, startMessage }) => {
+// Function to extract numeric value from "OFERTE GĂSITE: <number>" string
+const extractCargoCount = (cargoCountString) => {
+  const match = cargoCountString.match(/\d+/);  // This regex extracts the number part
+  return match ? parseInt(match[0], 10) : 0;
+};
+
+const checkCargoForUrl = async ({ url, lastCargoCountFile }) => {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -76,49 +71,34 @@ const checkCargoForUrl = async ({ url, lastCargoCountFile, startMessage }) => {
     await page.waitForSelector('h4.label-items-found', { timeout: 10000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    const cargoCount = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCountString = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCount = extractCargoCount(cargoCountString);
     const lastCargoCount = getLastCargoCount(lastCargoCountFile);
 
-    if (cargoCount && cargoCount == lastCargoCount) {
+    if (cargoCount === lastCargoCount) {
+      console.log(`No new cargos for ${url}. The cargo count remains the same: ${cargoCount}`);
+    } else if (cargoCount) {
       const cargos = await page.$$('tr.table-line');
-      let cargoDetailsMessage = `
-<b>${startMessage}</b>
-`; // Declare once here
+      let cargoDetailsMessage = '';
       const cargoDetailsList = [];
       for (let el of cargos) {
         const cargoDetails = await extractCargoDetails(el);
         if (cargoDetails) cargoDetailsList.push(cargoDetails);
       }
       const latestCargos = cargoDetailsList.slice(0, 3);
-
-      // Mark the first cargo as the latest (top of the list)
-      for (let i = 0; i < latestCargos.length; i++) {
-        const cargo = latestCargos[i];
-        if (i === 0) {
-          cargoDetailsMessage += `
-<b>------------------------------</b>
-
-<b>🔴 <i>Ultima marfă apărută!</i></b> 
+      for (const cargo of latestCargos) {
+        cargoDetailsMessage += `
+<b>--------------------------</b>
 
 <b>${cargo.loadingCity} → ${cargo.unloadingCity}</b>
 <b>Perioada:</b> ${cargo.date}
 <b>Tip marfă:</b> ${cargo.cargoType}
 <b>Companie:</b> ${cargo.company}
-          `;
-        } else {
-          cargoDetailsMessage += `
-<b>------------------------------</b>
-
-<b>${cargo.loadingCity} → ${cargo.unloadingCity}</b>
-<b>Perioada:</b> ${cargo.date}
-<b>Tip marfă:</b> ${cargo.cargoType}
-<b>Companie:</b> ${cargo.company}
-          `;
-        }
+        `;
       }
-
       const message = `
-<b>🔔 Marfă nouă detectată Geotrans!</b>
+<b>🔔 Marfă nouă detectată!</b>
+<b>Ultimele 3 oferte:</b>
 ${cargoDetailsMessage}
 
 <a href="${url}">🔗 Vezi detalii aici</a>
@@ -133,7 +113,6 @@ ${cargoDetailsMessage}
   }
 };
 
-// Function to check all cargos from all URLs
 const checkAllCargos = async () => {
   console.log('Checking all cargos...');
   for (const urlConfig of urls) {
