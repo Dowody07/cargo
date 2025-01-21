@@ -26,12 +26,8 @@ const saveCargoCount = (cargoCount) => {
 
 const extractCargoDetails = async (el) => {
   try {
-    // Extract the first td.city (loading city)
     const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
-    
-    // Extract the second td.city (unloading city)
     const unloadingCity = await el.$$eval('.td-city', (cities) => cities[1].textContent.trim());
-
     const date = await el.$eval('.td-date span', (date) => date.textContent.trim());
     const infoList = await el.$$eval('.td-info', (infos) => infos.map(info => info.textContent.trim()));
     const cargoType = infoList[0] || 'No type available';
@@ -52,7 +48,7 @@ const extractCargoDetails = async (el) => {
   }
 };
 
-(async () => {
+const checkCargo = async () => {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
@@ -85,7 +81,7 @@ Companie: ${cargoDetails.company}
 
       const messageUrl = `${url}`;
 
-      if (lastCargoCount && lastCargoCount !== cargoCount) {
+      if (lastCargoCount && lastCargoCount == cargoCount) {
         const message = `Marfă nouă! ${cargoCount}:\n${cargoDetailsMessage}\n${messageUrl}`;
         await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           chat_id: chatId,
@@ -111,4 +107,10 @@ Companie: ${cargoDetails.company}
   } finally {
     await browser.close();
   }
-})();
+};
+
+// Run the checkCargo function every 5 minutes
+setInterval(checkCargo, 5 * 60 * 1000); // 5 minutes = 5 * 60 * 1000 ms
+
+// Optionally, run it once immediately when starting
+checkCargo();
