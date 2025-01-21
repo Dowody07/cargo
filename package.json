@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "axios": "^1.7.9",
+    "emailjs-com": "^3.2.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.16",
+    "puppeteer": "^24.1.0",
+    "xmlhttprequest": "^1.8.0"
+  }
+}
