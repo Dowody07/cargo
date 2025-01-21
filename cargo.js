@@ -77,7 +77,7 @@ Companie: ${cargoDetails.company}
 
       const messageUrl = `${url}`;
 
-      if (lastCargoCount && lastCargoCount == cargoCount) {
+      if (lastCargoCount && lastCargoCount !== cargoCount) {
         const message = `Marfă nouă! ${cargoCount}:\n${cargoDetailsMessage}\n${messageUrl}`;
         await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           chat_id: chatId,
