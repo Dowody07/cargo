@@ -114,4 +114,4 @@ const checkAllCargos = async () => {
   }
 };
 
-setInterval(checkAllCargos, 40000);
+setInterval(checkAllCargos, 43000);
