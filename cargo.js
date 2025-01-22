@@ -22,7 +22,7 @@ const urls = [
 // Send a message to Telegram
 const sendMessage = async (text) => {
   try {
-    console.log('[Info] Sending Telegram message...');
+    console.log('[Info]  Sending Telegram message...');
     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       chat_id: chatId,
       text,
