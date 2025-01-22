@@ -68,7 +68,7 @@ const checkCargoForUrl = async (urlConfig) => {
 
     // Extract and parse the cargo count
     const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
-    const cargoCountMatch = cargoCountText.match(/OFERTE GĂSITE:\s*(\d+)/); // Extract numeric part using regex
+    const cargoCountMatch = cargoCountText.match(/FOUND OFFERS:\s*(\d+)/); // Correct regex to match 'FOUND OFFERS: <number>'
     const cargoCount = cargoCountMatch ? parseInt(cargoCountMatch[1], 10) : NaN;
 
     if (isNaN(cargoCount)) {
