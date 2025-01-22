@@ -1,31 +1,40 @@
 const puppeteer = require('puppeteer');
 const axios = require('axios');
-const fs = require('fs');
 
+// Telegram bot configuration
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
-const chatId = '7920332150';
+const chatId = '1246584382';
 
+// URLs and their last cargo counts
 const urls = [
-  { url: 'https://geotrans.ro/cargo/search?from=2575&to=136', lastCargoCountFile: 'lastCargoCount_2575_136.json' },
-  { url: 'https://geotrans.ro/cargo/search?from=136&to=2575', lastCargoCountFile: 'lastCargoCount_136_2575.json' },
+  {
+    url: 'https://geotrans.ro/cargo/search?from=2575&to=136',
+    startMessage: 'Moldova → Romania',
+    lastCargoCount: 0 // Initialize with 0
+  },
+  {
+    url: 'https://geotrans.ro/cargo/search?from=136&to=2575',
+    startMessage: 'Romania → Moldova',
+    lastCargoCount: 0 // Initialize with 0
+  },
 ];
 
-const getLastCargoCount = (file) => {
-  if (fs.existsSync(file)) {
-    try {
-      const data = fs.readFileSync(file, 'utf8');
-      return data ? JSON.parse(data).cargoCount : null;
-    } catch {
-      return null;
-    }
+// Send a message to Telegram
+const sendMessage = async (text) => {
+  try {
+    console.log('[Info] Sending Telegram message...');
+    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+    });
+    console.log('[Info] Message sent successfully!');
+  } catch (error) {
+    console.error('[Error] Failed to send Telegram message:', error.message);
   }
-  return null;
 };
 
-const saveCargoCount = (file, cargoCount) => {
-  fs.writeFileSync(file, JSON.stringify({ cargoCount }));
-};
-
+// Extract cargo details from a row
 const extractCargoDetails = async (el) => {
   try {
     const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
@@ -40,81 +49,83 @@ const extractCargoDetails = async (el) => {
   }
 };
 
-const sendMessage = async (text) => {
-  try {
-    console.log('Sending new message...');
-    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      chat_id: chatId,
-      text,
-      parse_mode: 'HTML',
-    });
-  } catch {
-    console.log('Error sending message');
-  }
-};
+// Check cargos for a specific URL
+const checkCargoForUrl = async (urlConfig) => {
+  const { url, startMessage, lastCargoCount } = urlConfig;
 
-// Function to extract numeric value from "OFERTE GĂSITE: <number>" string
-const extractCargoCount = (cargoCountString) => {
-  const match = cargoCountString.match(/\d+/);  // This regex extracts the number part
-  return match ? parseInt(match[0], 10) : 0;
-};
-
-const checkCargoForUrl = async ({ url, lastCargoCountFile }) => {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
+
   const page = await browser.newPage();
+
   try {
-    console.log(`Checking cargo for URL: ${url}`);
+    console.log(`[Info] Checking cargo for URL: ${url}`);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForSelector('h4.label-items-found', { timeout: 10000 });
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Small delay for additional loading
 
-    const cargoCountString = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
-    const cargoCount = extractCargoCount(cargoCountString);
-    const lastCargoCount = getLastCargoCount(lastCargoCountFile);
+    // Extract and parse the cargo count
+    const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCountMatch = cargoCountText.match(/OFERTE GĂSITE:\s*(\d+)/); // Extract numeric part using regex
+    const cargoCount = cargoCountMatch ? parseInt(cargoCountMatch[1], 10) : NaN;
 
-    if (cargoCount !== lastCargoCount) {
-      console.log(`No new cargos for ${url}. The cargo count remains the same: ${cargoCount}`);
-    } else if (cargoCount) {
-      const cargos = await page.$$('tr.table-line');
-      let cargoDetailsMessage = '';
-      const cargoDetailsList = [];
-      for (let el of cargos) {
-        const cargoDetails = await extractCargoDetails(el);
-        if (cargoDetails) cargoDetailsList.push(cargoDetails);
-      }
-      const latestCargos = cargoDetailsList.slice(0, 3);
-      for (const cargo of latestCargos) {
-        cargoDetailsMessage += `
-<b>--------------------------</b>
+    if (isNaN(cargoCount)) {
+      console.error('[Error] Failed to extract cargo count. Raw text:', cargoCountText);
+      return;
+    }
+
+    console.log(`[Info] Current cargo count: ${cargoCount}`);
+    console.log(`[Info] Last recorded cargo count: ${lastCargoCount}`);
+
+    // Compare with last recorded count in memory
+    const cargos = await page.$$('tr.table-line');
+    let cargoDetailsMessage = `\n<b>${startMessage}</b>\n\n`;
+    const cargoDetailsList = [];
+    for (let el of cargos) {
+      const cargoDetails = await extractCargoDetails(el);
+      if (cargoDetails) cargoDetailsList.push(cargoDetails);
+    }
+
+    // Get the last 3 cargos
+    const latestCargos = cargoDetailsList.slice(0, 3);
+
+    for (let i = 0; i < latestCargos.length; i++) {
+      const cargo = latestCargos[i];
+      cargoDetailsMessage += `
+<b>${i === 0 ? '🔴 Ultima marfă apărută!' : '------------------------------'}</b>
 
 <b>${cargo.loadingCity} → ${cargo.unloadingCity}</b>
 <b>Perioada:</b> ${cargo.date}
 <b>Tip marfă:</b> ${cargo.cargoType}
 <b>Companie:</b> ${cargo.company}
-        `;
-      }
-      const message = `
-<b>🔔 Marfă nouă detectată!</b>
-<b>Ultimele 3 oferte:</b>
+`;
+    }
+
+    const message = `
+<b>🔔 Marfă nouă detectată Geotrans!</b>
 ${cargoDetailsMessage}
 
 <a href="${url}">🔗 Vezi detalii aici</a>
-      `.trim();
+    `.trim();
+
+    if (cargoCount > lastCargoCount) {
       await sendMessage(message);
-      saveCargoCount(lastCargoCountFile, cargoCount);
+      urlConfig.lastCargoCount = cargoCount; // Update last count
+    } else {
+      console.log(`[Info] No new cargos detected for ${url}`);
     }
-  } catch {
-    console.log(`Error processing URL: ${url}`);
+  } catch (error) {
+    console.error(`[Error] Error processing URL: ${url}`, error.message);
   } finally {
     await browser.close();
   }
 };
 
+// Check all cargos for all URLs
 const checkAllCargos = async () => {
-  console.log('Checking all cargos...');
+  console.log('[Info] Starting cargo check for all URLs...');
   for (const urlConfig of urls) {
     await checkCargoForUrl(urlConfig);
   }
