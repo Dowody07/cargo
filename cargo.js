@@ -107,14 +107,18 @@ const checkCargoForUrl = async (urlConfig) => {
 <b>🔔 Marfă nouă detectată Geotrans!</b>
 ${cargoDetailsMessage}
 
+<b>Număr total oferte: ${cargoCount}</b>
+
 <a href="${url}">🔗 Vezi detalii aici</a>
     `.trim();
 
+    // Only send the message if the cargo count is higher
     if (cargoCount > lastCargoCount) {
       await sendMessage(message);
       urlConfig.lastCargoCount = cargoCount; // Update last count
     } else {
-      console.log(`[Info] No new cargos detected for ${url}`);
+      console.log(`[Info] Cargo count is lower or equal to last recorded count. No message sent.`);
+      urlConfig.lastCargoCount = cargoCount; // Update the count anyway
     }
   } catch (error) {
     console.error(`[Error] Error processing URL: ${url}`, error.message);
