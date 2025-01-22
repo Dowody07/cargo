@@ -3,7 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
-const chatId = '7920332150';
+const chatId = '1246584382';
 
 const urls = [
   { 
