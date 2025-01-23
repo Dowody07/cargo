@@ -62,8 +62,8 @@ const checkCargoForUrl = async (urlConfig) => {
 
   try {
     console.log(`[Info] Checking cargo for URL: ${url}`);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForSelector('h4.label-items-found', { timeout: 10000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 17000 });
+    await page.waitForSelector('h4.label-items-found', { timeout: 13000 });
     await new Promise(resolve => setTimeout(resolve, 5000)); // Small delay for additional loading
 
     // Extract and parse the cargo count
@@ -89,7 +89,7 @@ const checkCargoForUrl = async (urlConfig) => {
     }
 
     // Get the last 3 cargos
-    const latestCargos = cargoDetailsList.slice(0, 3);
+    const latestCargos = cargoDetailsList.slice(0, 2);
 
     for (let i = 0; i < latestCargos.length; i++) {
       const cargo = latestCargos[i];

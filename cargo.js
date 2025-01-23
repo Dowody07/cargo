@@ -1,34 +1,40 @@
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
+// Telegram bot configuration
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
 const chatId = '7920332150';
 
+// URLs and their last cargo counts
 const urls = [
   {
     url: 'https://geotrans.ro/cargo/search?from=2575&to=136',
     startMessage: 'Moldova → Romania',
-    lastCargoCount: 0
+    lastCargoCount: 0 // Initialize with 0
   },
   {
     url: 'https://geotrans.ro/cargo/search?from=136&to=2575',
     startMessage: 'Romania → Moldova',
-    lastCargoCount: 0
+    lastCargoCount: 0 // Initialize with 0
   },
 ];
 
+// Send a message to Telegram
 const sendMessage = async (text) => {
   try {
+    console.log('[Info] Sending Telegram message...');
     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       chat_id: chatId,
       text,
       parse_mode: 'HTML',
     });
+    console.log('[Info] Message sent successfully!');
   } catch (error) {
     console.error('[Error] Failed to send Telegram message:', error.message);
   }
 };
 
+// Extract cargo details from a row
 const extractCargoDetails = async (el) => {
   try {
     const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
@@ -43,6 +49,7 @@ const extractCargoDetails = async (el) => {
   }
 };
 
+// Check cargos for a specific URL
 const checkCargoForUrl = async (urlConfig) => {
   const { url, startMessage, lastCargoCount } = urlConfig;
 
@@ -54,16 +61,25 @@ const checkCargoForUrl = async (urlConfig) => {
   const page = await browser.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForSelector('h4.label-items-found', { timeout: 10000 });
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    console.log(`[Info] Checking cargo for URL: ${url}`);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 17000 });
+    await page.waitForSelector('h4.label-items-found', { timeout: 13000 });
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Small delay for additional loading
 
+    // Extract and parse the cargo count
     const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
-    const cargoCountMatch = cargoCountText.match(/FOUND OFFERS:\s*(\d+)/);
+    const cargoCountMatch = cargoCountText.match(/OFERTE GĂSITE:\s*(\d+)/); // Extract numeric part using regex
     const cargoCount = cargoCountMatch ? parseInt(cargoCountMatch[1], 10) : NaN;
 
-    if (isNaN(cargoCount)) return;
+    if (isNaN(cargoCount)) {
+      console.error('[Error] Failed to extract cargo count. Raw text:', cargoCountText);
+      return;
+    }
 
+    console.log(`[Info] Current cargo count: ${cargoCount}`);
+    console.log(`[Info] Last recorded cargo count: ${lastCargoCount}`);
+
+    // Compare with last recorded count in memory
     const cargos = await page.$$('tr.table-line');
     let cargoDetailsMessage = `\n<b>${startMessage}</b>\n\n`;
     const cargoDetailsList = [];
@@ -72,7 +88,8 @@ const checkCargoForUrl = async (urlConfig) => {
       if (cargoDetails) cargoDetailsList.push(cargoDetails);
     }
 
-    const latestCargos = cargoDetailsList.slice(0, 3);
+    // Get the last 3 cargos
+    const latestCargos = cargoDetailsList.slice(0, 2);
 
     for (let i = 0; i < latestCargos.length; i++) {
       const cargo = latestCargos[i];
@@ -90,16 +107,14 @@ const checkCargoForUrl = async (urlConfig) => {
 <b>🔔 Marfă nouă detectată Geotrans!</b>
 ${cargoDetailsMessage}
 
-<b>Număr total oferte: ${cargoCount}</b>
-
 <a href="${url}">🔗 Vezi detalii aici</a>
     `.trim();
 
     if (cargoCount > lastCargoCount) {
       await sendMessage(message);
-      urlConfig.lastCargoCount = cargoCount;
+      urlConfig.lastCargoCount = cargoCount; // Update last count
     } else {
-      urlConfig.lastCargoCount = cargoCount;
+      console.log(`[Info] No new cargos detected for ${url}`);
     }
   } catch (error) {
     console.error(`[Error] Error processing URL: ${url}`, error.message);
@@ -108,10 +123,13 @@ ${cargoDetailsMessage}
   }
 };
 
+// Check all cargos for all URLs
 const checkAllCargos = async () => {
+  console.log('[Info] Starting cargo check for all URLs...');
   for (const urlConfig of urls) {
     await checkCargoForUrl(urlConfig);
   }
 };
 
-setInterval(checkAllCargos, 43000);
+// Run every 40 seconds
+setInterval(checkAllCargos, 40000);
