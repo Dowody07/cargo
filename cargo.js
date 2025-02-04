@@ -17,6 +17,7 @@ const urls = [
   },
 ];
 
+
 const sendMessage = async (text) => {
   try {
     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -54,8 +55,8 @@ const checkCargoForUrl = async (urlConfig) => {
   const page = await browser.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 17000 });
-    await page.waitForSelector('h4.label-items-found', { timeout: 13000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 22000 });
+    await page.waitForSelector('h4.label-items-found', { timeout: 17000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
     const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
@@ -113,4 +114,5 @@ const checkAllCargos = async () => {
   }
 };
 
-setInterval(checkAllCargos, 40000);
+setInterval(checkAllCargos, 45000);
+
