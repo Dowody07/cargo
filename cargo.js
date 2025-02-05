@@ -1,5 +1,5 @@
 require('dotenv').config();
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');  // Change to puppeteer (not puppeteer-core)
 const axios = require('axios');
 
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
@@ -48,7 +48,6 @@ const checkCargoForUrl = async (urlConfig) => {
   const { url, startMessage, lastCargoCount } = urlConfig;
 
   const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/google-chrome-stable',
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--single-process', '--no-zygote'],
   });
