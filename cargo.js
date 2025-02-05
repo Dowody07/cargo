@@ -17,6 +17,7 @@ const urls = [
   },
 ];
 
+
 const sendMessage = async (text) => {
   try {
     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -43,30 +44,18 @@ const extractCargoDetails = async (el) => {
   }
 };
 
-const checkCargoForUrl = async (urlConfig, browser) => {
+const checkCargoForUrl = async (urlConfig) => {
   const { url, startMessage, lastCargoCount } = urlConfig;
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
   const page = await browser.newPage();
 
-  const maxRetries = 3;
-  let success = false;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-      success = true;
-      break;
-    } catch (error) {
-      console.warn(`[Retry ${attempt}] Failed to load ${url}:`, error.message);
-    }
-  }
-
-  if (!success) {
-    console.error(`[Error] Unable to load ${url} after ${maxRetries} attempts.`);
-    await page.close();
-    return;
-  }
-
   try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 22000 });
     await page.waitForSelector('h4.label-items-found', { timeout: 17000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
@@ -115,22 +104,15 @@ ${cargoDetailsMessage}
   } catch (error) {
     console.error(`[Error] Error processing URL: ${url}`, error.message);
   } finally {
-    await page.close();
+    await browser.close();
   }
 };
 
 const checkAllCargos = async () => {
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--single-process', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
   for (const urlConfig of urls) {
-    await checkCargoForUrl(urlConfig, browser);
+    await checkCargoForUrl(urlConfig);
   }
-
-  await browser.close();
 };
 
 setInterval(checkAllCargos, 45000);
+
