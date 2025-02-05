@@ -1,5 +1,4 @@
-require('dotenv').config();
-const puppeteer = require('puppeteer');  // Change to puppeteer (not puppeteer-core)
+const puppeteer = require('puppeteer');
 const axios = require('axios');
 
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
@@ -18,6 +17,7 @@ const urls = [
   },
 ];
 
+
 const sendMessage = async (text) => {
   try {
     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -33,7 +33,7 @@ const sendMessage = async (text) => {
 const extractCargoDetails = async (el) => {
   try {
     const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
-    const unloadingCity = await el.$$eval('.td-city', (cities) => cities[1]?.textContent.trim() || 'N/A');
+    const unloadingCity = await el.$$eval('.td-city', (cities) => cities[1].textContent.trim());
     const date = await el.$eval('.td-date span', (date) => date.textContent.trim());
     const infoList = await el.$$eval('.td-info', (infos) => infos.map(info => info.textContent.trim()));
     const cargoType = infoList[0] || 'No type available';
@@ -49,17 +49,18 @@ const checkCargoForUrl = async (urlConfig) => {
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--single-process', '--no-zygote'],
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   const page = await browser.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 22000 });
-    await page.waitForSelector('h4.label-items-found', { timeout: 17000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await page.waitForSelector('h4.label-items-found', { timeout: 22000 });
+    await new Promise(resolve => setTimeout(resolve, 8000));
 
     const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
-    const cargoCountMatch = cargoCountText.match(/(?:ОФЕРТЫ НАЙДЕНЫ|NAJDENO PREDLOZHENIY|FOUND OFFERS|OFERTE GĂSITE):\s*(\d+)/i);
+    const cargoCountMatch = cargoCountText.match(/(?:OFERTE GĂSITE|FOUND OFFERS):\s*(\d+)/i);
     const cargoCount = cargoCountMatch ? parseInt(cargoCountMatch[1], 10) : NaN;
 
     if (isNaN(cargoCount)) {
@@ -113,4 +114,5 @@ const checkAllCargos = async () => {
   }
 };
 
-setInterval(checkAllCargos, 45000);
+setInterval(checkAllCargos, 50000);
+
