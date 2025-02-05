@@ -1,4 +1,3 @@
-// const chatId = '7920332150';
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 

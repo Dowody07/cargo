@@ -1,8 +1,9 @@
+require('dotenv').config();
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
-const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
-const chatId = '7920332150';
+const botToken = process.env.BOT_TOKEN;
+const chatId = process.env.CHAT_ID;
 
 const urls = [
   {
@@ -16,7 +17,6 @@ const urls = [
     lastCargoCount: 0
   },
 ];
-
 
 const sendMessage = async (text) => {
   try {
@@ -32,12 +32,13 @@ const sendMessage = async (text) => {
 
 const extractCargoDetails = async (el) => {
   try {
-    const loadingCity = await el.$eval('.td-city', (city) => city.textContent.trim());
-    const unloadingCity = await el.$$eval('.td-city', (cities) => cities[1].textContent.trim());
-    const date = await el.$eval('.td-date span', (date) => date.textContent.trim());
-    const infoList = await el.$$eval('.td-info', (infos) => infos.map(info => info.textContent.trim()));
+    const loadingCity = await el.$eval('.td-city', city => city.textContent.trim());
+    const unloadingCity = await el.$$eval('.td-city', cities => cities[1]?.textContent.trim() || 'Unknown');
+    const date = await el.$eval('.td-date span', date => date.textContent.trim());
+    const infoList = await el.$$eval('.td-info', infos => infos.map(info => info.textContent.trim()));
     const cargoType = infoList[0] || 'No type available';
-    const company = await el.$eval('.td-company', (company) => company.textContent.trim());
+    const company = await el.$eval('.td-company', company => company.textContent.trim());
+
     return { loadingCity, unloadingCity, date, cargoType, company };
   } catch {
     return null;
@@ -46,20 +47,22 @@ const extractCargoDetails = async (el) => {
 
 const checkCargoForUrl = async (urlConfig) => {
   const { url, startMessage, lastCargoCount } = urlConfig;
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-
-  const page = await browser.newPage();
+  let browser;
 
   try {
+    browser = await puppeteer.launch({
+      executablePath: process.env.CHROMIUM_PATH || '/usr/bin/google-chrome', // Use Railway's Chromium
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 22000 });
+
     await page.waitForSelector('h4.label-items-found', { timeout: 17000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
+    const cargoCountText = await page.$eval('h4.label-items-found', el => el.textContent.trim());
     const cargoCountMatch = cargoCountText.match(/(?:OFERTE GĂSITE|FOUND OFFERS):\s*(\d+)/i);
     const cargoCount = cargoCountMatch ? parseInt(cargoCountMatch[1], 10) : NaN;
 
@@ -71,6 +74,7 @@ const checkCargoForUrl = async (urlConfig) => {
     const cargos = await page.$$('tr.table-line');
     let cargoDetailsMessage = `\n<b>${startMessage}</b>\n\n`;
     const cargoDetailsList = [];
+
     for (let el of cargos) {
       const cargoDetails = await extractCargoDetails(el);
       if (cargoDetails) cargoDetailsList.push(cargoDetails);
@@ -104,7 +108,7 @@ ${cargoDetailsMessage}
   } catch (error) {
     console.error(`[Error] Error processing URL: ${url}`, error.message);
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 };
 
@@ -115,4 +119,3 @@ const checkAllCargos = async () => {
 };
 
 setInterval(checkAllCargos, 45000);
-
