@@ -1,10 +1,9 @@
 // const chatId = '7920332150';
-
 const puppeteer = require('puppeteer');
 const axios = require('axios');
 
 const botToken = '7851467206:AAHQDtehdzEfndJlCWOFX4ldvhGbr6j6p4Q';
-const chatId = '1246584382';
+const chatId = '7920332150';
 
 const urls = [
   {
@@ -57,8 +56,8 @@ const checkCargoForUrl = async (urlConfig) => {
   const page = await browser.newPage();
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 17000 });
-    await page.waitForSelector('h4.label-items-found', { timeout: 13000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 22000 });
+    await page.waitForSelector('h4.label-items-found', { timeout: 17000 });
     await new Promise(resolve => setTimeout(resolve, 5000));
 
     const cargoCountText = await page.$eval('h4.label-items-found', (el) => el.textContent.trim());
@@ -116,40 +115,5 @@ const checkAllCargos = async () => {
   }
 };
 
-setInterval(checkAllCargos, 40000);
+setInterval(checkAllCargos, 45000);
 
-
-
-// /app/node_modules/@puppeteer/browsers/lib/cjs/launch.js:314
-
-//                 reject(new Error([
-
-//                        ^
-
- 
-
-// Error: Failed to launch the browser process! spawn /root/.cache/puppeteer/chrome/linux-132.0.6834.83/chrome-linux64/chrome EAGAIN
-
- 
-
- 
-
-// TROUBLESHOOTING: https://pptr.dev/troubleshooting
-
- 
-
-//     at ChildProcess.onClose (/app/node_modules/@puppeteer/browsers/lib/cjs/launch.js:314:24)
-
-//     at ChildProcess.emit (node:events:517:28)
-
-//     at ChildProcess._handle.onexit (node:internal/child_process:290:12)
-
-//     at onErrorNT (node:internal/child_process:477:16)
-
-//     at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
-
- 
-
-// Node.js v18.20.5
-
-// npm warn config production Use `--omit=dev` instead.
